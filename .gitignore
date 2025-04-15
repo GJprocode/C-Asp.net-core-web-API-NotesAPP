@@ -1,0 +1,32 @@
+# Ignore sensitive files
+.env
+
+# Ignore build artifacts
+bin/
+obj/
+
+/bin/
+/obj/
+
+
+# Ignore user-specific files
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Ignore logs
+*.log
+
+# Ignore temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# certificates
+*.pfx
+*.crt
+*.key

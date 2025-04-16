@@ -80,4 +80,4 @@ dotnet run
 ## Notes
 - Certificates setup for secure https requests from frontend. 
 - Ensure the backend URL is properly configured in the frontend for API requests.
-- Use tools ike Postman or Swagger(API Documentation) for testing APIs during development.
+- Use tools like Postman or Swagger(API Documentation) for testing APIs during development.

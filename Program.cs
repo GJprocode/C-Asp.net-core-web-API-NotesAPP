@@ -13,9 +13,14 @@ Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
+
 // Configure logging
 builder.Logging.ClearProviders();
-builder.Logging.AddConsole(); // Add console logging
+if (builder.Environment.IsDevelopment())
+{
+    builder.Logging.AddConsole(); // only in Development
+}
+
 
 // Build the SQL Server connection string dynamically using environment variables
 string connectionString = $"Server={Env.GetString("SQL_SERVER")},{Env.GetString("SQL_PORT")};" +

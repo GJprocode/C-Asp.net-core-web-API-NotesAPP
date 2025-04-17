@@ -1,3 +1,5 @@
+// Program.cs
+
 using DotNetEnv;
 using System.Data;
 using Microsoft.Data.SqlClient;
@@ -8,141 +10,116 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Logging;
 
-namespace NotesBE
-{
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            // Load environment variables
-            Env.Load();
+// load .env
+Env.Load();
 
-            var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
-            // Configure logging
-            builder.Logging.ClearProviders();
-            if (builder.Environment.IsDevelopment())
-            {
-                builder.Logging.AddConsole();
-            }
+// logging
+builder.Logging.ClearProviders();
+if (builder.Environment.IsDevelopment())
+    builder.Logging.AddConsole();
 
-            // Build connection string from environment
-            var sqlServer = Env.GetString("SQL_SERVER") ?? throw new Exception("SQL_SERVER missing");
-            var sqlPort = Env.GetString("SQL_PORT") ?? "1433";
-            var sqlDb = Env.GetString("SQL_DATABASE") ?? throw new Exception("SQL_DATABASE missing");
-            var sqlUser = Env.GetString("SQL_USER") ?? throw new Exception("SQL_USER missing");
-            var sqlPass = Env.GetString("SQL_PASSWORD") ?? throw new Exception("SQL_PASSWORD missing");
+// build connection string
+var cs = new SqlConnectionStringBuilder {
+    DataSource           = $"{Env.GetString("SQL_SERVER")},{Env.GetString("SQL_PORT")}",
+    InitialCatalog       = Env.GetString("SQL_DATABASE"),
+    UserID               = Env.GetString("SQL_USER"),
+    Password             = Env.GetString("SQL_PASSWORD"),
+    TrustServerCertificate = true
+}.ConnectionString;
 
-            var connectionString = $"Server={sqlServer},{sqlPort};Database={sqlDb};User Id={sqlUser};Password={sqlPass};TrustServerCertificate=True;";
+// JWT
+string key      = Env.GetString("JWT_SECRET")  ?? throw new InvalidOperationException("Missing JWT_SECRET");
+string issuer   = Env.GetString("JWT_ISSUER")  ?? "NotesBE";
+string audience = Env.GetString("JWT_AUDIENCE") ?? "NotesBEUsers";
 
-            var jwtSecret = Env.GetString("JWT_SECRET") ?? throw new Exception("JWT_SECRET missing");
-            var jwtIssuer = Env.GetString("JWT_ISSUER") ?? "NotesBE";
-            var jwtAudience = Env.GetString("JWT_AUDIENCE") ?? "NotesBEUsers";
+// services
+builder.Services.AddControllers();
+builder.Services.AddScoped<IDbConnection>(_ => new SqlConnection(cs));
+builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<NoteRepository>();
 
-            // Register services
-            builder.Services.AddControllers();
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen(options =>
-            {
-                options.SwaggerDoc("v1", new OpenApiInfo
-                {
-                    Title = "NotesBE",
-                    Version = "v1"
-                });
-
-                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-                {
-                    Type = SecuritySchemeType.Http,
-                    Scheme = "bearer",
-                    BearerFormat = "JWT",
-                    In = ParameterLocation.Header,
-                    Description = "Enter 'Bearer {token}'"
-                });
-
-                options.AddSecurityRequirement(new OpenApiSecurityRequirement
-                {
-                    {
-                        new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        Array.Empty<string>()
-                    }
-                });
-            });
-
-            builder.Services.AddScoped<NoteRepository>();
-            builder.Services.AddScoped<UserRepository>();
-            builder.Services.AddScoped<IDbConnection>(_ => new SqlConnection(connectionString));
-
-            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
-                {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-                        ValidateIssuer = true,
-                        ValidIssuer = jwtIssuer,
-                        ValidateAudience = true,
-                        ValidAudience = jwtAudience,
-                        ValidateLifetime = true
-                    };
-                });
-
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowAll", policy =>
-                {
-                    policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
-                });
-            });
-
-            var app = builder.Build();
-
-            // Middleware for logging
-            app.Use(async (context, next) =>
-            {
-                var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-                logger.LogInformation($"Request: {context.Request.Method} {context.Request.Path}");
-
-                if (context.Request.Headers.ContainsKey("Authorization"))
-                {
-                    logger.LogInformation($"Auth Header: {context.Request.Headers["Authorization"]}");
-                }
-
-                await next();
-            });
-
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
-
-            app.UseCors("AllowAll");
-            app.UseHttpsRedirection();
-            app.UseAuthentication();
-            app.UseAuthorization();
-            app.MapControllers();
-
-            // Try connection
-            try
-            {
-                using var conn = new SqlConnection(connectionString);
-                conn.Open();
-                Console.WriteLine("✅ Connected to SQL Server.");
-            }
-            catch (SqlException ex)
-            {
-                Console.WriteLine($"❌ SQL Server connection failed: {ex.Message}");
-            }
-
-            app.Run();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(opts => {
+  opts.SwaggerDoc("v1", new OpenApiInfo { Title = "NotesBE", Version = "v1" });
+  opts.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme {
+    Type         = SecuritySchemeType.Http,
+    Scheme       = "bearer",
+    BearerFormat = "JWT",
+    In           = ParameterLocation.Header,
+    Description  = "JWT auth header"
+  });
+  opts.AddSecurityRequirement(new OpenApiSecurityRequirement {
+    [ new OpenApiSecurityScheme {
+        Reference = new OpenApiReference {
+          Type = ReferenceType.SecurityScheme,
+          Id   = "Bearer"
         }
-    }
+      }
+    ] = new string[]{}
+  });
+});
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+       .AddJwtBearer(o => {
+         o.TokenValidationParameters = new TokenValidationParameters {
+           ValidateIssuerSigningKey = true,
+           IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+           ValidateIssuer           = true,
+           ValidIssuer              = issuer,
+           ValidateAudience         = true,
+           ValidAudience            = audience,
+           ValidateLifetime         = true
+         };
+         o.Events = new JwtBearerEvents {
+           OnAuthenticationFailed = ctx => {
+             ctx.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>()
+               .LogError(ctx.Exception, "Auth failed");
+             return Task.CompletedTask;
+           },
+           OnTokenValidated = ctx => {
+             ctx.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>()
+               .LogInformation("Token valid");
+             return Task.CompletedTask;
+           }
+         };
+       });
+
+builder.Services.AddCors(c => c.AddPolicy("AllowAll", p =>
+  p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin()
+));
+
+var app = builder.Build();
+
+// request logging
+app.Use(async (ctx, next) => {
+  var log = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
+  log.LogInformation($"{ctx.Request.Method} {ctx.Request.Path}");
+  if (ctx.Request.Headers.ContainsKey("Authorization"))
+    log.LogInformation($"Auth: {ctx.Request.Headers["Authorization"]}");
+  await next();
+});
+
+if (app.Environment.IsDevelopment()) {
+  app.UseSwagger();
+  app.UseSwaggerUI();
 }
+
+app.UseCors("AllowAll");
+app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+// smoke‑test the DB on startup
+try {
+  using var conn = new SqlConnection(cs);
+  conn.Open();
+  Console.WriteLine("✅ SQL Connected!");
+}
+catch (Exception ex) {
+  Console.WriteLine($"❌ SQL failed: {ex.Message}");
+}
+
+app.Run();

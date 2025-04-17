@@ -1,13 +1,17 @@
 {
   "compilerOptions": {
+    "target": "ESNext",                             // Needed for modern features
+    "module": "ESNext",                             // Required for import.meta.env
     "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "strict": true, // Enable strict type-checking
-    "forceConsistentCasingInFileNames": true, // Ensure consistent casing
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     }
-  }
+  },
+  "include": ["src", "vite-env.d.ts"],          // Make sure to include your Vite env types
+  "exclude": ["node_modules", "dist"]
 }

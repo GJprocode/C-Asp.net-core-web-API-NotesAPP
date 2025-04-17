@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // Create an Axios instance for API requests
 const api = axios.create({
-  baseURL: 'import.meta.env.VITE_API_BASE_URL'+ '/api', // Backend's secure HTTPS URL
+  baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`, // ✅ THIS will dynamically load from .env
   headers: {
     'Content-Type': 'application/json',
   },

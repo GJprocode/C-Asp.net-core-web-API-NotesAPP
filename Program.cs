@@ -29,6 +29,13 @@ var cs = new SqlConnectionStringBuilder {
     TrustServerCertificate = true
 }.ConnectionString;
 
+// DEBUG: Log connection string without password
+Console.WriteLine("🔍 Connecting with:");
+Console.WriteLine($"  Server   : {Env.GetString("SQL_SERVER")}:{Env.GetString("SQL_PORT")}");
+Console.WriteLine($"  DB       : {Env.GetString("SQL_DATABASE")}");
+Console.WriteLine($"  User     : {Env.GetString("SQL_USER")}");
+
+
 // JWT
 string key      = Env.GetString("JWT_SECRET")  ?? throw new InvalidOperationException("Missing JWT_SECRET");
 string issuer   = Env.GetString("JWT_ISSUER")  ?? "NotesBE";

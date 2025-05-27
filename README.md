@@ -73,6 +73,6 @@ frontend/
 
 ## **Notes**
 
-- Ensure the backend API is running to test the full functionality, rebuild frequently for chnaging to take affect.
+- Ensure the backend API is running to test the full functionality, rebuild frequently for changing to take affect.
 - Use the `npm run lint` command to check for linting issues.
 - All secrets (like API keys) should be handled securely and excluded from the repository.
